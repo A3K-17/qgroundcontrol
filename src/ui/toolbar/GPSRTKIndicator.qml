@@ -45,7 +45,7 @@ Item {
 
                 QGCLabel {
                     id:             gpsLabel
-                    text:           (activeVehicle && activeVehicle.gps.count.value >= 0) ? qsTr("GPS Status") : qsTr("GPS Data Unavailable")
+                    text: (QGroundControl.multiVehicleManager.gpsRtk.active.value) ?  qsTr("Survey-in Active") : qsTr("RTK Active")
                     font.family:    ScreenTools.demiboldFontFamily
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
@@ -58,16 +58,14 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     columns: 2
 
-                    QGCLabel { text: qsTr("GPS Count:") }
-                    QGCLabel { text: activeVehicle ? activeVehicle.gps.count.valueString : qsTr("N/A", "No data to display") }
-                    QGCLabel { text: qsTr("GPS Lock:") }
-                    QGCLabel { text: activeVehicle ? activeVehicle.gps.lock.enumStringValue : qsTr("N/A", "No data to display") }
-                    QGCLabel { text: qsTr("HDOP:") }
-                    QGCLabel { text: activeVehicle ? activeVehicle.gps.hdop.valueString : qsTr("--.--", "No data to display") }
-                    QGCLabel { text: qsTr("VDOP:") }
-                    QGCLabel { text: activeVehicle ? activeVehicle.gps.vdop.valueString : qsTr("--.--", "No data to display") }
-                    QGCLabel { text: qsTr("Course Over Ground:") }
-                    QGCLabel { text: activeVehicle ? activeVehicle.gps.courseOverGround.valueString : qsTr("--.--", "No data to display") }
+                    QGCLabel { text: qsTr("GPS connected:") }
+                    QGCLabel { text: QGroundControl.multiVehicleManager.gpsRtk.connected.value }
+                    QGCLabel { text: qsTr("Survey-in Duration:") }
+                    QGCLabel { text: QGroundControl.multiVehicleManager.gpsRtk.currentDuration.value }
+                    QGCLabel { text: qsTr("Survey-in Accuracy:") }
+                    QGCLabel { text: QGroundControl.multiVehicleManager.gpsRtk.currentAccuracy.value }
+                    QGCLabel { text: qsTr("Number of Satellites:") }
+                    QGCLabel { text: QGroundControl.multiVehicleManager.gpsRtk.numSatellites.value }
                 }
             }
 

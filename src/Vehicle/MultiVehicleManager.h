@@ -28,6 +28,43 @@ class MAVLinkProtocol;
 
 Q_DECLARE_LOGGING_CATEGORY(MultiVehicleManagerLog)
 
+class GPSRTKFactGroup : public FactGroup
+{
+    Q_OBJECT
+
+public:
+    GPSRTKFactGroup(QObject* parent = NULL);
+
+    Q_PROPERTY(Fact* connected            READ connected            CONSTANT)
+    Q_PROPERTY(Fact* currentDuration      READ currentDuration      CONSTANT)
+    Q_PROPERTY(Fact* currentAccuracy      READ currentAccuracy      CONSTANT)
+    Q_PROPERTY(Fact* valid                READ valid                CONSTANT)
+    Q_PROPERTY(Fact* active               READ active               CONSTANT)
+    Q_PROPERTY(Fact* numSatellites        READ numSatellites        CONSTANT)
+
+    Fact* connected                    (void) { return &_connected; }
+    Fact* currentDuration              (void) { return &_currentDuration; }
+    Fact* currentAccuracy              (void) { return &_currentAccuracy; }
+    Fact* valid                        (void) { return &_valid; }
+    Fact* active                       (void) { return &_active; }
+    Fact* numSatellites                (void) { return &_numSatellites; }
+
+    static const char* _connectedFactName;
+    static const char* _currentDurationFactName;
+    static const char* _currentAccuracyFactName;
+    static const char* _validFactName;
+    static const char* _activeFactName;
+    static const char* _numSatellitesFactName;
+
+private:
+    Fact        _connected; ///< is an RTK gps connected?
+    Fact        _currentDuration; ///< survey-in status in [s]
+    Fact        _currentAccuracy; ///< survey-in accuracy in [mm]
+    Fact        _valid; ///< survey-in valid?
+    Fact        _active; ///< survey-in active?
+    Fact        _numSatellites; ///< number of satellites
+};
+
 class MultiVehicleManager : public QGCTool
 {
     Q_OBJECT
@@ -43,6 +80,7 @@ public:
     Q_PROPERTY(Vehicle*             activeVehicle                   READ activeVehicle                  WRITE setActiveVehicle          NOTIFY activeVehicleChanged)
     Q_PROPERTY(QmlObjectListModel*  vehicles                        READ vehicles                                                       CONSTANT)
     Q_PROPERTY(bool                 gcsHeartBeatEnabled             READ gcsHeartbeatEnabled            WRITE setGcsHeartbeatEnabled    NOTIFY gcsHeartBeatEnabledChanged)
+    Q_PROPERTY(FactGroup*           gpsRtk                          READ gpsRtkFactGroup                CONSTANT)
 
     /// A disconnected vehicle used for offline editing. It will match the vehicle type specified in Settings.
     Q_PROPERTY(Vehicle*             offlineEditingVehicle           READ offlineEditingVehicle                                          CONSTANT)
@@ -78,6 +116,8 @@ public:
     // Override from QGCTool
     virtual void setToolbox(QGCToolbox *toolbox);
 
+    FactGroup* gpsRtkFactGroup         (void) { return &_gpsRtkFactGroup; }
+
 signals:
     void vehicleAdded(Vehicle* vehicle);
     void vehicleRemoved(Vehicle* vehicle);
@@ -96,6 +136,11 @@ private slots:
     void _sendGCSHeartbeat(void);
     void _vehicleHeartbeatInfo(LinkInterface* link, int vehicleId, int componentId, int vehicleMavlinkVersion, int vehicleFirmwareType, int vehicleType);
 
+    void _onGPSConnect();
+    void _onGPSDisconnect();
+    void _GPSSurveyInStatus(float duration, float accuracyMM, bool valid, bool active);
+    void _GPSNumSatellites(int numSatellites);
+
 private:
     bool _vehicleExists(int vehicleId);
 
@@ -103,6 +148,7 @@ private:
     bool        _parameterReadyVehicleAvailable;    ///< true: An active vehicle with ready parameters is available
     Vehicle*    _activeVehicle;                     ///< Currently active vehicle from a ui perspective
     Vehicle*    _offlineEditingVehicle;             ///< Disconnected vechicle used for offline editing
+    GPSRTKFactGroup _gpsRtkFactGroup;               ///< RTK GPS information
 
     QList<Vehicle*> _vehiclesBeingDeleted;          ///< List of Vehicles being deleted in queued phases
     Vehicle*        _vehicleBeingSetActive;         ///< Vehicle being set active in queued phases

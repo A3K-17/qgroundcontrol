@@ -18,6 +18,7 @@
 #include "SettingsManager.h"
 #include "QGCCorePlugin.h"
 #include "QGCOptions.h"
+#include "GPS/GPSManager.h"
 
 #if defined (__ios__) || defined(__android__)
 #include "MobileScreenMgr.h"
@@ -28,6 +29,30 @@
 QGC_LOGGING_CATEGORY(MultiVehicleManagerLog, "MultiVehicleManagerLog")
 
 const char* MultiVehicleManager::_gcsHeartbeatEnabledKey = "gcsHeartbeatEnabled";
+
+const char* GPSRTKFactGroup::_connectedFactName =                "connected";
+const char* GPSRTKFactGroup::_currentAccuracyFactName =          "currentAccuracy";
+const char* GPSRTKFactGroup::_currentDurationFactName =          "currentDuration";
+const char* GPSRTKFactGroup::_validFactName =                    "valid";
+const char* GPSRTKFactGroup::_activeFactName =                   "active";
+const char* GPSRTKFactGroup::_numSatellitesFactName =             "numSatellites";
+
+GPSRTKFactGroup::GPSRTKFactGroup(QObject* parent)
+    : FactGroup(1000, ":/json/Vehicle/GPSRTKFact.json", parent)
+    , _connected             (false, _connectedFactName,          FactMetaData::valueTypeBool)
+    , _currentDuration       (0, _currentDurationFactName,        FactMetaData::valueTypeDouble)
+    , _currentAccuracy       (0, _currentAccuracyFactName,        FactMetaData::valueTypeDouble)
+    , _valid                 (false, _validFactName,              FactMetaData::valueTypeBool)
+    , _active                (false, _activeFactName,             FactMetaData::valueTypeBool)
+    , _numSatellites         (false, _numSatellitesFactName,      FactMetaData::valueTypeInt32)
+{
+    _addFact(&_connected,          _connectedFactName);
+    _addFact(&_currentDuration,    _currentDurationFactName);
+    _addFact(&_currentAccuracy,    _currentAccuracyFactName);
+    _addFact(&_valid,              _validFactName);
+    _addFact(&_active,             _activeFactName);
+    _addFact(&_numSatellites,      _numSatellitesFactName);
+}
 
 MultiVehicleManager::MultiVehicleManager(QGCApplication* app, QGCToolbox* toolbox)
     : QGCTool(app, toolbox)
@@ -70,6 +95,14 @@ void MultiVehicleManager::setToolbox(QGCToolbox *toolbox)
                                         static_cast<MAV_TYPE>(settingsManager->appSettings()->offlineEditingVehicleType()->rawValue().toInt()),
                                         _firmwarePluginManager,
                                         this);
+
+   GPSManager *gpsManager = toolbox->gpsManager();
+   if (gpsManager) {
+       connect(gpsManager, &GPSManager::onConnect, this, &MultiVehicleManager::_onGPSConnect);
+       connect(gpsManager, &GPSManager::onDisconnect, this, &MultiVehicleManager::_onGPSDisconnect);
+       connect(gpsManager, &GPSManager::surveyInStatus, this, &MultiVehicleManager::_GPSSurveyInStatus);
+       connect(gpsManager, &GPSManager::satelliteUpdate, this, &MultiVehicleManager::_GPSNumSatellites);
+   }
 }
 
 void MultiVehicleManager::_vehicleHeartbeatInfo(LinkInterface* link, int vehicleId, int componentId, int vehicleMavlinkVersion, int vehicleFirmwareType, int vehicleType)
@@ -145,6 +178,26 @@ void MultiVehicleManager::_vehicleHeartbeatInfo(LinkInterface* link, int vehicle
     }
 #endif
 
+}
+
+void MultiVehicleManager::_onGPSConnect()
+{
+    _gpsRtkFactGroup.connected()->setRawValue(true);
+}
+void MultiVehicleManager::_onGPSDisconnect()
+{
+    _gpsRtkFactGroup.connected()->setRawValue(false);
+}
+void MultiVehicleManager::_GPSSurveyInStatus(float duration, float accuracyMM, bool valid, bool active)
+{
+    _gpsRtkFactGroup.currentDuration()->setRawValue(duration);
+    _gpsRtkFactGroup.currentAccuracy()->setRawValue(accuracyMM);
+    _gpsRtkFactGroup.valid()->setRawValue(valid);
+    _gpsRtkFactGroup.active()->setRawValue(active);
+}
+void MultiVehicleManager::_GPSNumSatellites(int numSatellites)
+{
+    _gpsRtkFactGroup.numSatellites()->setRawValue(numSatellites);
 }
 
 /// This slot is connected to the Vehicle::allLinksDestroyed signal such that the Vehicle is deleted
